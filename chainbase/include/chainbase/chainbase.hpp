@@ -19,6 +19,8 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/throw_exception.hpp>
 
+#include <fc/crypto/sha256.hpp>
+
 #include <array>
 #include <atomic>
 #include <fstream>
@@ -103,10 +105,10 @@ namespace chainbase {
          int64_t _id = 0;
    };
 
-   template<uint16_t TypeNumber, typename Derived>
+   template<uint16_t TypeNumber, typename IDType>
    struct object
    {
-      typedef oid<Derived> id_type;
+      typedef IDType id_type;
       static const uint16_t type_id = TypeNumber;
    };
 
@@ -146,7 +148,7 @@ namespace chainbase {
          id_value_type_map            old_values;
          id_value_type_map            removed_values;
          id_type_set                  new_ids;
-         id_type                      old_next_id = 0;
+         // id_type                      old_next_id;
          int64_t                      revision = 0;
    };
 
@@ -188,7 +190,6 @@ namespace chainbase {
          typedef typename index_type::value_type                       value_type;
          typedef bip::allocator< generic_index, segment_manager_type > allocator_type;
          typedef undo_state< value_type >                              undo_state_type;
-
          generic_index( allocator<value_type> a )
          :_stack(a),_indices( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
 
@@ -203,20 +204,19 @@ namespace chainbase {
           */
          template<typename Constructor>
          const value_type& emplace( Constructor&& c ) {
-            auto new_id = _next_id;
+            // auto new_id = _next_id;
 
             auto constructor = [&]( value_type& v ) {
-               v.id = new_id;
+               // v.id = new_id;
                c( v );
             };
-
             auto insert_result = _indices.emplace( constructor, _indices.get_allocator() );
 
             if( !insert_result.second ) {
                BOOST_THROW_EXCEPTION( std::logic_error("could not insert object, most likely a uniqueness constraint was violated") );
             }
 
-            ++_next_id;
+            // ++_next_id;
             on_create( *insert_result.first );
             return *insert_result.first;
          }
@@ -301,7 +301,7 @@ namespace chainbase {
          session start_undo_session( bool enabled ) {
             if( enabled ) {
                _stack.emplace_back( _indices.get_allocator() );
-               _stack.back().old_next_id = _next_id;
+               // _stack.back().old_next_id = _next_id;
                _stack.back().revision = ++_revision;
                return session( *this, _revision );
             } else {
@@ -327,7 +327,7 @@ namespace chainbase {
             {
                _indices.erase( _indices.find( id ) );
             }
-            _next_id = head.old_next_id;
+            // _next_id = head.old_next_id;
 
             for( auto& item : head.old_values ) {
                auto ok = _indices.modify( _indices.find( item.second.id ), [&]( value_type& v ) {
@@ -485,7 +485,7 @@ namespace chainbase {
             _revision = static_cast<int64_t>(revision);
          }
 
-         void remove_object( int64_t id )
+         void remove_object( typename value_type::id_type id )
          {
             const value_type* val = find( typename value_type::id_type(id) );
             if( !val ) BOOST_THROW_EXCEPTION( std::out_of_range( boost::lexical_cast<std::string>(id) ) );
@@ -562,7 +562,7 @@ namespace chainbase {
           *  Commit will discard all revisions prior to the committed revision.
           */
          int64_t                         _revision = 0;
-         typename value_type::id_type    _next_id = 0;
+         // typename value_type::id_type    _next_id;
          index_type                      _indices;
          uint32_t                        _size_of_value_type = 0;
          uint32_t                        _size_of_this = 0;
@@ -609,14 +609,14 @@ namespace chainbase {
          virtual const std::string& type_name()const = 0;
          virtual std::pair<int64_t, int64_t> undo_stack_revision_range()const = 0;
 
-         virtual void remove_object( int64_t id ) = 0;
+         virtual void remove_object( void* id ) = 0;
 
          void* get()const { return _idx_ptr; }
       private:
          void* _idx_ptr;
    };
 
-   template<typename BaseIndex>
+   template<typename BaseIndex, typename IDType>
    class index_impl : public abstract_index {
       public:
          index_impl( BaseIndex& base ):abstract_index( &base ),_base(base){}
@@ -636,16 +636,16 @@ namespace chainbase {
          virtual const std::string& type_name() const override { return BaseIndex_name; }
          virtual std::pair<int64_t, int64_t> undo_stack_revision_range()const override { return _base.undo_stack_revision_range(); }
 
-         virtual void     remove_object( int64_t id ) override { return _base.remove_object( id ); }
+         virtual void     remove_object( void* id ) override { return _base.remove_object( *(static_cast<IDType*>(id)) ); }
       private:
          BaseIndex& _base;
          std::string BaseIndex_name = boost::core::demangle( typeid( typename BaseIndex::value_type ).name() );
    };
 
-   template<typename IndexType>
-   class index : public index_impl<IndexType> {
+   template<typename IndexType, typename IDType>
+   class index : public index_impl<IndexType, IDType> {
       public:
-         index( IndexType& i ):index_impl<IndexType>( i ){}
+         index( IndexType& i ):index_impl<IndexType, IDType>( i ){}
    };
 
 
@@ -786,9 +786,10 @@ namespace chainbase {
             const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
             typedef generic_index<MultiIndexType>          index_type;
             typedef typename index_type::allocator_type    index_alloc;
+            typedef typename index_type::value_type::id_type id_type;
 
             std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
-
+            std::string id_type_name = boost::core::demangle( typeid( typename index_type::value_type::id_type ).name() );
             if( !( _index_map.size() <= type_id || _index_map[ type_id ] == nullptr ) ) {
                BOOST_THROW_EXCEPTION( std::logic_error( type_name + "::type_id is already in use" ) );
             }
@@ -844,7 +845,7 @@ namespace chainbase {
             if( type_id >= _index_map.size() )
                _index_map.resize( type_id + 1 );
 
-            auto new_index = new index<index_type>( *idx_ptr );
+            auto new_index = new index<index_type, id_type>( *idx_ptr );
             _index_map[ type_id ].reset( new_index );
             _index_list.push_back( new_index );
          }

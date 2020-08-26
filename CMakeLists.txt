@@ -25,6 +25,6 @@ add_executable(statedb statedb.cpp eos_db.cpp name.cpp )
 
 add_subdirectory( chainbase )
 add_subdirectory( fc )
-add_subdirectory( unit_test )
+# add_subdirectory( unit_test )
 
 target_link_libraries( statedb fc Boost::filesystem chainbase)

@@ -152,7 +152,8 @@ using table_name = name;
       key_value_object_type,
       index64_object_type,
       index128_object_type,
-      index256_object_type
+      index256_object_type,
+      table_key_value_object_type
    };
 
 class account_object;

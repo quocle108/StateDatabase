@@ -14,7 +14,7 @@ using namespace ::boost;
 using namespace ::boost::multi_index;
 using chainbase::allocator;
 
-struct table_id_object : public chainbase::object<table_id_object_type, table_id_object>
+struct table_id_object : public chainbase::object<table_id_object_type, int64_t>
 {
     //CHAINBASE_DEFAULT_CONSTRUCTOR(table_id_object)
     template <typename Constructor, typename Allocator>
@@ -54,7 +54,7 @@ struct by_scope_primary;
 struct by_scope_secondary;
 struct by_scope_tertiary;
 
-struct key_value_object : public chainbase::object<key_value_object_type, key_value_object>
+struct key_value_object : public chainbase::object<key_value_object_type, int64_t>
 {
     // CHAINBASE_DEFAULT_CONSTRUCTOR( key_value_object )
 
@@ -89,12 +89,12 @@ template <typename SecondaryKey, uint64_t ObjectTypeId, typename SecondaryKeyLes
 struct secondary_index
 {
 
-    struct index_object : public chainbase::object<ObjectTypeId, index_object>
+    struct index_object : public chainbase::object<ObjectTypeId, int64_t>
     {
         CHAINBASE_DEFAULT_CONSTRUCTOR(index_object)
 
         typedef SecondaryKey secondary_key_type;
-        typename chainbase::object<ObjectTypeId, index_object>::id_type id;
+        typename chainbase::object<ObjectTypeId, int64_t>::id_type id;
 
         table_id t_id;        //< t_id should not be changed within a chainbase modifier lambda
         uint64_t primary_key; //< primary_key should not be changed within a chainbase modifier lambda
@@ -132,9 +132,30 @@ typedef std::array<uint128_t, 2> key256_t;
 typedef secondary_index<key256_t, index256_object_type>::index_object index256_object;
 typedef secondary_index<key256_t, index256_object_type>::index_index index256_index;
 
+struct table_key_object : public chainbase::object<table_key_value_object_type, fc::sha256>
+{
+    template <typename Constructor, typename Allocator>
+    table_key_object(Constructor &&c, Allocator &&a) : value(a)
+    {
+        c(*this);
+    }
+    
+    id_type id;
+    fc::sha256 payer;
+    shared_blob value;
+};
+
+struct by_id;
+struct by_key;
+struct by_composite_key;
+using table_key_multi_index = chainbase::shared_multi_index_container<
+    table_key_object,
+    indexed_by<hashed_unique<tag<by_key>, member<table_key_object, fc::sha256, &table_key_object::id>>>>;
+
+
 CHAINBASE_SET_INDEX_TYPE(table_id_object, table_id_multi_index)
 CHAINBASE_SET_INDEX_TYPE(key_value_object, key_value_index)
-
 CHAINBASE_SET_INDEX_TYPE(index64_object, index64_index)
 CHAINBASE_SET_INDEX_TYPE(index128_object, index128_index)
 CHAINBASE_SET_INDEX_TYPE(index256_object, index256_index)
+CHAINBASE_SET_INDEX_TYPE(table_key_object, table_key_multi_index)
