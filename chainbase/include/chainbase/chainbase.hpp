@@ -87,10 +87,12 @@ namespace chainbase {
    /**
     *  Object ID type that includes the type of the object it references
     */
-   template<typename T>
+   template<typename T, typename IDType>
    class oid {
       public:
-         oid( int64_t i = 0 ):_id(i){}
+         oid( int64_t i = 0 ):_id(i){
+            BOOST_STATIC_ASSERT(std::is_same_v<IDType, int64_t>);
+         }
 
          oid& operator++() { ++_id; return *this; }
 
@@ -99,15 +101,48 @@ namespace chainbase {
          friend bool operator == ( const oid& a, const oid& b ) { return a._id == b._id; }
          friend bool operator != ( const oid& a, const oid& b ) { return a._id != b._id; }
          friend std::ostream& operator<<(std::ostream& s, const oid& id) {
-            s << boost::core::demangle(typeid(oid<T>).name()) << '(' << id._id << ')'; return s;
+            s << boost::core::demangle(typeid(oid<T, IDType>).name()) << '(' << id._id << ')'; return s;
          }
 
          int64_t _id = 0;
    };
 
+   template<typename T>
+   class oid<T, fc::sha256> {
+      public:
+         oid( fc::sha256 i ):_id(i){}
+
+         oid& operator++() { 
+            ++i; 
+            _id = fc::sha256::hash(i);
+            return *this; 
+         }
+
+         friend bool operator < ( const oid& a, const oid& b ) { return a._id < b._id; }
+         friend bool operator > ( const oid& a, const oid& b ) { return a._id > b._id; }
+         friend bool operator == ( const oid& a, const oid& b ) { return a._id == b._id; }
+         friend bool operator != ( const oid& a, const oid& b ) { return a._id != b._id; }
+         friend std::ostream& operator<<(std::ostream& s, const oid& id) {
+            s << boost::core::demangle(typeid(oid<T, fc::sha256>).name()) << '(' << id._id << ')'; return s;
+         }
+         fc::sha256 _id;
+         private:
+         int64_t i;
+   };
+
+   template<uint16_t TypeNumber, typename Derived, typename IDType>
+   struct newobject
+   {
+      typedef oid<Derived, IDType> id_type;
+      static const uint16_t type_id = TypeNumber;
+   };
+
    template<uint16_t TypeNumber, typename IDType>
    struct object
    {
+      object(){
+         BOOST_STATIC_ASSERT(std::is_same_v<IDType, int64_t> || std::is_same_v<IDType, fc::sha256>);
+      }
       typedef IDType id_type;
       static const uint16_t type_id = TypeNumber;
    };
@@ -907,8 +942,8 @@ namespace chainbase {
              return &*itr;
          }
 
-         template< typename ObjectType >
-         const ObjectType* find( oid< ObjectType > key = oid< ObjectType >() ) const
+         template< typename ObjectType, typename IDType >
+         const ObjectType* find( oid< ObjectType, IDType > key = oid< ObjectType, IDType >() ) const
          {
              CHAINBASE_REQUIRE_READ_LOCK("find", ObjectType);
              typedef typename get_index_type< ObjectType >::type index_type;
@@ -931,8 +966,8 @@ namespace chainbase {
              return *obj;
          }
 
-         template< typename ObjectType >
-         const ObjectType& get( const oid< ObjectType >& key = oid< ObjectType >() )const
+         template< typename ObjectType, typename IDType  >
+         const ObjectType& get( const oid< ObjectType, IDType >& key = oid< ObjectType, IDType >() )const
          {
              CHAINBASE_REQUIRE_READ_LOCK("get", ObjectType);
              auto obj = find< ObjectType >( key );

@@ -107,6 +107,12 @@ public:
     eos_db() = delete;
     eos_db(chainbase::database &mutable_db);
 
+    const table_key_object & db_store_by_key(fc::sha256 scope, fc::sha256 key, fc::sha256 payer, const char *buffer, size_t buffer_size);
+
+    void db_update_by_key(fc::sha256 scope, fc::sha256 key, fc::sha256 payer, const char *buffer, size_t buffer_size);
+    
+    void db_remove_by_key(fc::sha256 scope, fc::sha256 key);
+
     const table_id_object &find_or_create_table(name code, fc::sha256 scope, name table, name payer);
 
     const table_id_object &db_store_by_scope(name code, fc::sha256 scope, name table, name payer, const char *buffer, size_t buffer_size);

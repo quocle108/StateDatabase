@@ -17,11 +17,44 @@ struct config
     vector<string> db_hugepage_paths;
 };
 
-template<typename T>
-void test() {
-    std::cout << "test type id: " << boost::core::demangle( typeid( T ).name() ) << std::endl;
+template <typename TimeT = std::chrono::milliseconds>
+struct measure
+{
+    template <typename F, typename... Args>
+    static typename TimeT::rep execution(F func, Args &&... args)
+    {
+        auto start = std::chrono::high_resolution_clock::now();
+        func(std::forward<Args>(args)...);
+        auto duration = std::chrono::duration_cast<TimeT>(std::chrono::high_resolution_clock::now() - start);
+        return duration.count();
+    }
+};
+
+void store_by_table_key_value(chainbase::database &db, uint64_t indies_num)
+{
+    eos_db _eosdb(db);
+    auto user_public_key = fc::crypto::private_key::generate().get_public_key();
+    auto owner = fc::sha256::hash(user_public_key);
+    for (auto i = 0; i < indies_num; i++)
+    {
+        auto key = fc::sha256::hash(i);
+        _eosdb.db_store_by_key(owner, key, owner, "bob's info", strlen("bob's info"));
+    }
 }
 
+void store_by_table_ordered_id(chainbase::database &db, uint64_t indies_num)
+{
+    eos_db _eosdb(db);
+    auto receiver = name("receiver");
+    auto table = name("table");
+    auto scope = fc::sha256::hash<std::string>("scope");
+
+    _eosdb.find_or_create_table(receiver, scope, table, receiver);
+    for (auto i = 0; i < indies_num; i++)
+    {
+        _eosdb.db_store_i64(receiver, scope, table, receiver, i, "bob's info", strlen("bob's info"));
+    }
+}
 
 int main(int argc, char **argv)
 {
@@ -31,24 +64,26 @@ int main(int argc, char **argv)
     {
 
         chainbase::database db(cfg.database_dir, database::read_write, cfg.cache_size);
-        eos_db _eosdb(db);
-        // db.add_index<table_id_multi_index>();
-        // db.add_index<key_value_index>();
-        // db.add_index<index64_index>();
-        // db.add_index<index128_index>();
-        // db.add_index<index256_index>();
+        db.add_index<table_id_multi_index>();
+        db.add_index<key_value_index>();
+        db.add_index<index64_index>();
+        db.add_index<index128_index>();
+        db.add_index<index256_index>();
         db.add_index<table_key_multi_index>();
-      auto table = name("table");
-      auto user_public_key = fc::crypto::private_key::generate().get_public_key();
-      auto scope = fc::sha256::hash<>(user_public_key);
-        db.create<table_key_object>([&](table_key_object &t_id) {
-            t_id.id = scope;
-            t_id.value.assign("bob's info", strlen("bob's info"));
-        });
 
-        const auto *existing_tid = db.find<table_key_object, by_key>(scope);
-        std::cout << existing_tid->value << '\n';
-        std::cout << existing_tid->id << '\n';
+        auto t = measure<std::chrono::nanoseconds>::execution(store_by_table_key_value, db, 100000);
+        std::cout << "Done1 ..." << t << std::endl;
+        auto t1 = measure<std::chrono::nanoseconds>::execution(store_by_table_ordered_id, db, 100000);
+        std::cout << "Done2 ..." << t1 << std::endl;
+
+        // db.create<table_key_object>([&](table_key_object &t_id) {
+        //     t_id.id = scope;
+        //     t_id.value.assign("bob's info", strlen("bob's info"));
+        // });
+
+        // const auto *existing_tid = db.find<table_key_object, by_key>(scope);
+        // std::cout << existing_tid->value << '\n';
+        // std::cout << existing_tid->id << '\n';
         // db.create<table_key_object>([&](table_key_object &t_id) {
         //     t_id.id = scope;
         //     t_id.value.assign("bob's info", strlen("bob's info"));
@@ -66,8 +101,8 @@ int main(int argc, char **argv)
         // const auto *existing_tid = db.find<table_key_object, by_key>(1);
         // std::cout << existing_tid->value << '\n';
         // std::cout << existing_tid->id << '\n';
-    // std::vector<string> v = {"apple", "facebook", "microsoft", "google"};
-    //     std::cout << "value type: " << boost::core::demangle(typeid(decltype(v)::value_type).name()) << std::endl;
+        // std::vector<string> v = {"apple", "facebook", "microsoft", "google"};
+        //     std::cout << "value type: " << boost::core::demangle(typeid(decltype(v)::value_type).name()) << std::endl;
         // db.add_index<table_key_multi_index>();
 
         // auto receiver = name("receiver");
@@ -80,17 +115,17 @@ int main(int argc, char **argv)
 
         // table_key_multi_index table_key;
         // std::string value = "alice's info";
-    //   value.assign("alice's info", strlen("alice's info"));
-    //   const shared_blob& b = shared_blob(value.begin(), value.end(), allocator<value>);
+        //   value.assign("alice's info", strlen("alice's info"));
+        //   const shared_blob& b = shared_blob(value.begin(), value.end(), allocator<value>);
         // shared_blob value("alice's info");
-        
+
         // table_key.insert({1});
 
-    //     auto &table_index = table_key.get<0>();
-    //     auto it1 = table_index.find(1);
-    //     std::cout << it1->id << '\n';
-    //     table_index.modify(it1, [&](table_key_object &a) { a.id = 2; });
-    // //     std::cout << it1->scope << '\n';
+        //     auto &table_index = table_key.get<0>();
+        //     auto it1 = table_index.find(1);
+        //     std::cout << it1->id << '\n';
+        //     table_index.modify(it1, [&](table_key_object &a) { a.id = 2; });
+        // //     std::cout << it1->scope << '\n';
 
         // table_key.emplace([&](table_key_object &t_id) {
         //     t_id.scope = scope;
