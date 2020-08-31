@@ -107,11 +107,54 @@ public:
     eos_db() = delete;
     eos_db(chainbase::database &mutable_db);
 
-    const table_key_object & db_store_by_key(fc::sha256 scope, fc::sha256 key, fc::sha256 payer, const char *buffer, size_t buffer_size);
+    template <typename KeyType>
+    const table_key_object *db_find_by_key(fc::sha256 scope, KeyType key) const
+    {
+        auto hashed_key = fc::sha256::hash(key);
+        auto table_key = fc::sha256::hash(make_pair(scope, hashed_key));
+        return db.find<table_key_object, by_key>(table_key);
+    }
 
-    void db_update_by_key(fc::sha256 scope, fc::sha256 key, fc::sha256 payer, const char *buffer, size_t buffer_size);
-    
-    void db_remove_by_key(fc::sha256 scope, fc::sha256 key);
+    template <typename KeyType>
+    const table_key_object &db_store_by_key(fc::sha256 scope, KeyType key, fc::sha256 payer, const char *buffer, size_t buffer_size)
+    {
+        auto hashed_key = fc::sha256::hash(key);
+        auto table_key = fc::sha256::hash(make_pair(scope, hashed_key));
+        const auto *existing_tid = db.find<table_key_object, by_key>(table_key);
+
+        assert(existing_tid == nullptr && "object key alreay exist");
+
+        return db.create<table_key_object>([&](table_key_object &t) {
+            t.id = table_key;
+            t.payer = payer;
+            t.value.assign(buffer, buffer_size);
+        });
+    }
+
+    template <typename KeyType>
+    void db_update_by_key(fc::sha256 scope, KeyType key, fc::sha256 payer, const char *buffer, size_t buffer_size)
+    {
+        auto hashed_key = fc::sha256::hash(key);
+        auto table_key = fc::sha256::hash(make_pair(scope, hashed_key));
+        const auto *existing_tid = db.find<table_key_object, by_key>(table_key);
+
+        assert(existing_tid != nullptr && "object key not found");
+
+        db.modify(*existing_tid, [&](auto &t) {
+            t.payer = payer;
+            t.value.assign(buffer, buffer_size);
+        });
+    }
+
+    template <typename KeyType>
+    void db_remove_by_key(fc::sha256 scope, KeyType key)
+    {
+        auto hashed_key = fc::sha256::hash(key);
+        auto table_key = fc::sha256::hash(make_pair(scope, hashed_key));
+        const auto *existing_tid = db.find<table_key_object, by_key>(table_key);
+        assert(existing_tid != nullptr && "object key not found");
+        db.remove(*existing_tid);
+    }
 
     const table_id_object &find_or_create_table(name code, fc::sha256 scope, name table, name payer);
 

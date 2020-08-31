@@ -22,6 +22,12 @@ public:
         }
     }
 
+    static int size(const chainbase::database &db)
+    {
+        auto const &index = db.get_index<Index>().indices();
+        return index.size();
+    }
+
     template <typename Secondary, typename Key, typename F>
     static void walk_range(const chainbase::database &db, const Key &begin_key, const Key &end_key, F function)
     {

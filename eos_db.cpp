@@ -4,42 +4,6 @@
 eos_db::eos_db(chainbase::database &mutable_db) : db(mutable_db),idx64(*this),idx128(*this),idx256(*this)
 {
 }
-const table_key_object &eos_db::db_store_by_key(fc::sha256 scope, fc::sha256 key, fc::sha256 payer, const char *buffer, size_t buffer_size)
-{
-    auto table_key = fc::sha256::hash(make_pair(scope, key));
-    const auto *existing_tid = db.find<table_key_object, by_key>(table_key);
-
-    assert(existing_tid == nullptr && "object key alreay exist");
-
-    return db.create<table_key_object>([&](table_key_object &t) {
-        t.id = table_key;
-        t.payer = payer;
-        t.value.assign(buffer, buffer_size);
-    });
-}
-
-void eos_db::db_update_by_key(fc::sha256 scope, fc::sha256 key, fc::sha256 payer, const char *buffer, size_t buffer_size)
-{
-    auto table_key = fc::sha256::hash(make_pair(scope, key));
-    const auto *existing_tid = db.find<table_key_object, by_key>(table_key);
-
-    assert(existing_tid != nullptr && "object key not found");
-
-    db.modify(*existing_tid, [&](auto &t) {
-        t.payer = payer;
-        t.value.assign(buffer, buffer_size);
-    });    
-}
-
-void eos_db::db_remove_by_key(fc::sha256 scope, fc::sha256 key)
-{
-    auto table_key = fc::sha256::hash(make_pair(scope, key));
-    const auto *existing_tid = db.find<table_key_object, by_key>(table_key);
-    assert(existing_tid != nullptr && "object key not found");
-    db.remove(*existing_tid);
-}
-
-
 
 const table_id_object &eos_db::find_or_create_table(name code, fc::sha256 scope, name table, name payer)
 {

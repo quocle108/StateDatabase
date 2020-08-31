@@ -1,6 +1,7 @@
 #define BOOST_TEST_MODULE db test
 
 #include <boost/test/unit_test.hpp>
+#include <boost/test/execution_monitor.hpp>
 #include <chainbase/chainbase.hpp>
 
 #include <boost/multi_index_container.hpp>
@@ -21,16 +22,11 @@ BOOST_AUTO_TEST_CASE(store_by_scope)
    boost::filesystem::path temp = boost::filesystem::unique_path();
    try
    {
-      std::cerr << temp << " \n";
-
       chainbase::database db(temp, database::read_write, 1024 * 1024 * 8);
 
       eos_db _eosdb(db);
       db.add_index<table_id_multi_index>();
       db.add_index<key_value_index>();
-      db.add_index<index64_index>();
-      db.add_index<index128_index>();
-      db.add_index<index256_index>();
 
       auto receiver = name("receiver");
       auto payer1 = name("payer1");
@@ -50,8 +46,50 @@ BOOST_AUTO_TEST_CASE(store_by_scope)
       BOOST_TEST_MESSAGE("Update");
       {
          const auto &itr = _eosdb.find_or_create_table(receiver, scope, table, payer2);
-         _eosdb.db_update_by_scope(itr, receiver, "20.0000 EOS", strlen("100.0000 EOS"));
-         BOOST_REQUIRE(itr.value == "20.0000 EOS" && itr.payer == payer2);
+         _eosdb.db_update_by_scope(itr, receiver, "20.0000 EOS", strlen("20.0000 EOS"));
+         BOOST_REQUIRE(itr.value == "20.0000 EOS" && itr.payer == receiver);
+      }
+   }
+   catch (...)
+   {
+      bfs::remove_all(temp);
+      throw;
+   }
+   bfs::remove_all(temp);
+}
+
+BOOST_AUTO_TEST_CASE(store_by_key_value)
+{
+
+   boost::filesystem::path temp = boost::filesystem::unique_path();
+   try
+   {
+      chainbase::database db(temp, database::read_write, 1024 * 1024 * 8);
+
+      eos_db _eosdb(db);
+      db.add_index<table_key_multi_index>();
+
+      auto scope = fc::sha256::hash<std::string>("scope");
+
+      BOOST_TEST_MESSAGE("Store");
+      {
+         const auto &itr = _eosdb.db_store_by_key(scope, "key", scope, "100.0000 EOS", strlen("100.0000 EOS"));
+         BOOST_REQUIRE(itr.value == "100.0000 EOS");
+         // BOOST_REQUIRE_THROW(_eosdb.db_store_by_key(scope, "key", scope, "100.0000 EOS", strlen("100.0000 EOS"),boost::execution_exception);
+      }
+
+      BOOST_TEST_MESSAGE("Update");
+      {
+         _eosdb.db_update_by_key(scope, "key", scope, "20.0000 EOS", strlen("20.0000 EOS"));
+         const auto &itr = _eosdb.db_find_by_key(scope, "key");
+         BOOST_REQUIRE(itr->value == "20.0000 EOS");
+      }
+
+      BOOST_TEST_MESSAGE("remove");
+      {
+         _eosdb.db_remove_by_key(scope, "key");
+         auto itr = _eosdb.db_find_by_key(scope, "key");
+         BOOST_REQUIRE(itr == nullptr);
       }
    }
    catch (...)
@@ -68,8 +106,6 @@ BOOST_AUTO_TEST_CASE(store_primary_index)
    boost::filesystem::path temp = boost::filesystem::unique_path();
    try
    {
-      std::cerr << temp << " \n";
-
       chainbase::database db(temp, database::read_write, 1024 * 1024 * 8);
       // chainbase::database db2(temp); /// open an already created db
 
