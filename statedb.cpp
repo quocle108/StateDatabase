@@ -1,11 +1,5 @@
 #include <iostream>
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/member.hpp>
-#include "db_viewer.hpp"
-#include "eos_db.hpp"
-#include <algorithm>
-#include <random>
+#include "perfomance_tests.hpp"
 
 using namespace std;
 using namespace chainbase;
@@ -19,50 +13,10 @@ struct config
     vector<string> db_hugepage_paths;
 };
 
-template <typename TimeT = std::chrono::milliseconds>
-struct measure
+void random_ids(std::vector<int> &ids)
 {
-    template <typename F, typename... Args>
-    static typename TimeT::rep execution(F func, Args &&... args)
-    {
-        auto start = std::chrono::high_resolution_clock::now();
-        func(std::forward<Args>(args)...);
-        auto duration = std::chrono::duration_cast<TimeT>(std::chrono::high_resolution_clock::now() - start);
-        return duration.count();
-    }
-};
-
-void store_by_table_key_value(chainbase::database &db, const std::vector<int> &ids)
-{
-    eos_db _eosdb(db);
-    auto scope = fc::sha256::hash<std::string>("scope");
-    for (auto i = 0; i < ids.size(); i++)
-    {
-        _eosdb.db_store_by_key(scope, i, scope, "bob's info", strlen("bob's info"));
-    }
-}
-
-void store_by_table_ordered_id(chainbase::database &db, const std::vector<int> &ids)
-{
-    eos_db _eosdb(db);
-    auto receiver = name("receiver");
-    auto table = name("table");
-    auto scope = fc::sha256::hash<std::string>("scope");
-
-    _eosdb.find_or_create_table(receiver, scope, table, receiver);
-    for (auto i = 0; i < ids.size(); i++)
-    {
-        _eosdb.db_store_i64(receiver, scope, table, receiver, ids[i], "bob's info", strlen("bob's info"));
-    }
-}
-
-void create_random_id(std::vector<int> &unique_ids, uint64_t num)
-{
-    unique_ids.reserve(num);
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    for (int i = 0; i < num; ++i)
-        unique_ids.push_back(i);
-    std::shuffle(unique_ids.begin(), unique_ids.end(), std::default_random_engine(seed));
+    std::shuffle(ids.begin(), ids.end(), std::default_random_engine(seed));
 }
 
 int main(int argc, char **argv)
@@ -74,24 +28,44 @@ int main(int argc, char **argv)
     {
         for (int i = 1; i < argc; i++)
         {
-
             chainbase::database db(cfg.database_dir, database::read_write, cfg.cache_size);
             db.add_index<table_id_multi_index>();
             db.add_index<key_value_index>();
-            db.add_index<index64_index>();
-            db.add_index<index128_index>();
-            db.add_index<index256_index>();
             db.add_index<table_key_multi_index>();
-            std::vector<int> random_ids;
+
             const int test_num = atoi(argv[i]);
-            create_random_id(random_ids, test_num);
+            std::vector<int> ids;
+            ids.reserve(test_num);
+            for (int i = 0; i < test_num; ++i) ids.push_back(i);
 
-            auto t = measure<std::chrono::nanoseconds>::execution(store_by_table_ordered_id, db, random_ids);
-            std::cout << "ORDERED INDEX TABLE" << " - Total Elements:" << db_viewer<key_value_index>::size(db) << " - Duration: " << t << " - Execution Time Unit: " << t / test_num << std::endl;
+            std::cout << "ORDERED INDEX TABLE" << " - Total Elements: " << test_num << std::endl;
 
-            auto t1 = measure<std::chrono::nanoseconds>::execution(store_by_table_key_value, db, random_ids);
-            std::cout << "KEY VALUE TABLE" << " - Total Elements:" << db_viewer<table_key_multi_index>::size(db) << " - Duration: " << t1 << " - Execution Time Unit: " << t1 / test_num << std::endl;
+            random_ids(ids);
+            auto t = measure<std::chrono::nanoseconds>::execution(db_tests::store_by_table_ordered_id, db, ids);
+            std::cout << "STORE" << " - Elements:" << db_viewer<key_value_index>::size(db) << " - Duration: " << t << " - Execution Time Unit: " << t / test_num << std::endl;
+
+            random_ids(ids);
+            auto t1 = measure<std::chrono::nanoseconds>::execution(db_tests::update_by_table_ordered_id, db, ids);
+            std::cout << "UPDATE" << " - Elements:" << db_viewer<key_value_index>::size(db) << " - Duration: " << t1 << " - Execution Time Unit: " << t1 / test_num << std::endl;
+
+            random_ids(ids);
+            auto t2 = measure<std::chrono::nanoseconds>::execution(db_tests::remove_by_table_ordered_id, db, ids);
+            std::cout << "REMOVE" << " - Elements:" << db_viewer<key_value_index>::size(db) << " - Duration: " << t2 << " - Execution Time Unit: " << t2 / test_num << std::endl << std::endl;
+
+            std::cout << "KEY VALUE TABLE" << " - Total Elements: " << test_num << std::endl;
             
+            random_ids(ids);
+            auto t3 = measure<std::chrono::nanoseconds>::execution(db_tests::store_by_table_key_value, db, ids);
+            std::cout << "STORE" << " - Elements:" << db_viewer<table_key_multi_index>::size(db) << " - Duration: " << t3 << " - Execution Time Unit: " << t3 / test_num << std::endl;
+            
+            random_ids(ids);
+            auto t4 = measure<std::chrono::nanoseconds>::execution(db_tests::update_by_table_key_value, db, ids);
+            std::cout << "UPDATE" << " - Elements:" << db_viewer<table_key_multi_index>::size(db) << " - Duration: " << t4 << " - Execution Time Unit: " << t4 / test_num << std::endl;
+            
+            random_ids(ids);
+            auto t5 = measure<std::chrono::nanoseconds>::execution(db_tests::remove_by_table_key_value, db, ids);
+            std::cout << "REMOVE" << " - Elements:" << db_viewer<table_key_multi_index>::size(db) << " - Duration: " << t5 << " - Execution Time Unit: " << t5 / test_num << std::endl;
+
             std::cout << std::endl;
             bfs::remove_all(cfg.database_dir);
         }
