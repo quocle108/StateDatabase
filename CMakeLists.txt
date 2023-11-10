@@ -21,10 +21,11 @@ FIND_PACKAGE(Boost 1.57 REQUIRED COMPONENTS filesystem unit_test_framework)
 
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-conversion" )
 
-add_executable(statedb statedb.cpp eos_db.cpp name.cpp )
+#add_executable(statedb statedb.cpp eos_db.cpp name.cpp )
 
 add_subdirectory( chainbase )
 add_subdirectory( fc )
 add_subdirectory( unit_test )
 
+add_executable(statedb main.cpp name.cpp )
 target_link_libraries( statedb fc Boost::filesystem chainbase)

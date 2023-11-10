@@ -52,7 +52,7 @@ int eos_db::db_store_i64(name code, fc::sha256 scope, name table, name payer, ui
         o.value.assign(buffer, buffer_size);
         o.payer = payer;
     });
-
+    std::cout << "obj.id" << obj.id << std::endl;
     db.modify(tab, [&](auto &t) {
         ++t.count;
     });

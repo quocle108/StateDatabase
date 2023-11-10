@@ -44,8 +44,7 @@ using table_id_multi_index = chainbase::shared_multi_index_container<
                        composite_key<table_id_object,
                                      member<table_id_object, name, &table_id_object::code>,
                                      member<table_id_object, fc::sha256, &table_id_object::scope>,
-                                     member<table_id_object, name, &table_id_object::table>>,
-                                     composite_key_compare<std::less<name>, sha256_less, std::less<name>>>>>;
+                                     member<table_id_object, name, &table_id_object::table>>>>>;
                                     
 
 using table_id = table_id_object::id_type;

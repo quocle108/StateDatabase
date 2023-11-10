@@ -1,3 +1,6 @@
+#ifndef INCLUDE_TYPES_HPP_
+#define INCLUDE_TYPES_HPP_
+
 #pragma once
 #include "name.hpp"
 
@@ -149,11 +152,18 @@ using table_name = name;
    {
       reversible_block_object_type,
       table_id_object_type,
+      table_id_object_type1,
       key_value_object_type,
       index64_object_type,
       index128_object_type,
       index256_object_type,
-      table_key_value_object_type
+      table_key_value_object_type,
+      account_object_type,
+      account_metadata_object_type,
+      account_ram_correction_object_type,
+      new_account_object_type,
+      new_account_metadata_object_type,
+      new_account_ram_correction_object_type
    };
 
 class account_object;
@@ -184,3 +194,5 @@ struct sha256_less
 typedef __int128 int128_t;
 typedef unsigned __int128 uint128_t;
 typedef std::array<uint128_t, 2> key256_t;
+
+#endif  // INCLUDE_TYPES_HPP_"

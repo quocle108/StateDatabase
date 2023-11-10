@@ -29,18 +29,25 @@ BOOST_AUTO_TEST_CASE(store_by_scope)
       db.add_index<key_value_index>();
 
       auto receiver = name("receiver");
+      auto receiver1 = name("receiver1");
       auto payer1 = name("payer1");
       auto payer2 = name("payer2");
       auto table = name("table");
+       auto table2 = name("table2");
       auto user_public_key = fc::crypto::private_key::generate().get_public_key();
       auto scope = fc::sha256::hash<>(user_public_key);
 
-      _eosdb.db_store_by_scope(receiver, scope, table, payer1, "100.0000 EOS", strlen("100.0000 EOS"));
+      auto user_public_key1 = fc::crypto::private_key::generate().get_public_key();
+      auto scope1 = fc::sha256::hash<>(user_public_key1);
 
+      const auto &itr1 = _eosdb.db_store_by_scope(receiver, scope, table, payer1, "100.0000 EOS", strlen("100.0000 EOS"));
+      BOOST_TEST_MESSAGE("ID: " << itr1.id);
+      
       BOOST_TEST_MESSAGE("Store");
       {
          const auto &itr = _eosdb.find_or_create_table(receiver, scope, table, payer1);
          BOOST_REQUIRE(itr.value == "100.0000 EOS");
+          
       }
 
       BOOST_TEST_MESSAGE("Update");
