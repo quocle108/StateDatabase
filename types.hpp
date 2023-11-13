@@ -163,7 +163,12 @@ using table_name = name;
       account_ram_correction_object_type,
       new_account_object_type,
       new_account_metadata_object_type,
-      new_account_ram_correction_object_type
+      new_account_ram_correction_object_type,
+      permission_usage_object_type,
+      permission_object_type,
+      new_permission_usage_object_type,
+      new_permission_object_type
+      
    };
 
 class account_object;

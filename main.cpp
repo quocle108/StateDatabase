@@ -24,12 +24,14 @@
 #include "types.hpp"
 #include "account_object.hpp"
 #include "new_account_object.hpp"
+#include "permission_object.hpp"
 #include "utils.hpp"
 
 using namespace std;
 using namespace chainbase;
 using namespace boost::multi_index;
 namespace bfs = boost::filesystem;
+
 
 /**
     This simple program will open database_dir and add two new books every time
@@ -41,11 +43,13 @@ int main(int argc, char **argv)
    // boost::filesystem::path temp = boost::filesystem::unique_path();
    // std::cerr << temp << " \n";
    boost::filesystem::path database_dir = "state";
-   chainbase::database db(database_dir, database::read_write, 1024 * 1024 * 1024);
+   chainbase::database db(database_dir, database::read_write, (uint64_t)1024 * 1024 * 1024 * 2);
    db.add_index<account_index>();
    db.add_index<account_metadata_index>();
    db.add_index<account_ram_correction_index>();
-   for (auto i = 0; i < 1000000; i++)
+   db.add_index<permission_index>();
+   db.add_index<permission_usage_index>();
+   for (auto i = 0; i < 1500000; i++)
    {
       create_native_account(db, name(i));
    }
@@ -55,11 +59,13 @@ int main(int argc, char **argv)
    // boost::filesystem::path temp1 = boost::filesystem::unique_path();
    // std::cerr << temp1 << " \n";
    boost::filesystem::path new_database_dir = "state1";
-   chainbase::database db1(new_database_dir, database::read_write, 1024 * 1024 * 1024);
+   chainbase::database db1(new_database_dir, database::read_write, (uint64_t)1024 * 1024 * 1024 * 2 );
    db1.add_index<new_account_index>();
    db1.add_index<new_account_metadata_index>();
    db1.add_index<new_account_ram_correction_index>();
-   for (auto i = 0; i < 1000000; i++)
+   db1.add_index<permission_index>();
+   db1.add_index<permission_usage_index>();
+   for (auto i = 0; i < 1500000; i++)
    {
       new_create_native_account(db1, name(i));
    }
@@ -69,7 +75,7 @@ int main(int argc, char **argv)
    //  const auto& new_account_index = db1.get_index<new_account_index>().indices().get<by_id>();
    const name test_account = name(123);
    const auto *account_idx = db.find<account_object, by_name>(test_account);
-   cout << "account name in current table is: " << name(account_idx->id).to_string() << endl;
+   cout << "account name in current table is: " << account_idx->account_name.to_string() << endl;
    const auto *new_account_idx = db1.find<new_account_object, by_id>(test_account.to_uint64_t());
    cout << "account name in new table is: " << name(new_account_idx->id).to_string() << endl;
 

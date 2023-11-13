@@ -14,7 +14,7 @@
 
 #include "name.hpp"
 #include "types.hpp"
-
+#include "permission_object.hpp"
 struct new_account_object : public chainbase::object<new_account_object_type, int64_t>
 {
    template <typename Constructor, typename Allocator>
@@ -61,8 +61,11 @@ using new_account_metadata_index = chainbase::shared_multi_index_container<
 
 struct new_account_ram_correction_object : public chainbase::object<new_account_ram_correction_object_type, int64_t>
 {
-   OBJECT_CTOR(new_account_ram_correction_object);
-
+   template <typename Constructor, typename Allocator>
+   new_account_ram_correction_object(Constructor &&c, Allocator &&a)
+   {
+      c(*this);
+   }
    id_type id;
    uint64_t ram_correction = 0;
 };
@@ -100,6 +103,9 @@ void new_create_native_account(chainbase::database &db, name account_name)
                                                       {
          rco.id = account_name.to_uint64_t(); });
    }
+   // create permisison
+    const auto& owner_permission  = create_permission(db, account_name, name('owner'), 0 );
+    const auto& active_permission  = create_permission(db, account_name, name('active'), owner_permission.id );
 }
 
 #endif  // INCLUDE_NEW_ACCOUNT_OBJECT_HPP_"

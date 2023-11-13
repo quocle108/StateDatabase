@@ -1,3 +1,5 @@
+#ifndef INCLUDE_NAME_HPP_
+#define INCLUDE_NAME_HPP_
 #pragma once
 #include <string>
 #include <iosfwd>
@@ -72,3 +74,5 @@ static constexpr name string_to_name(std::string_view str)
 {
     return name(string_to_uint64_t(str));
 }
+
+#endif  // INCLUDE_NAME_HPP_"
