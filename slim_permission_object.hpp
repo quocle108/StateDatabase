@@ -1,5 +1,5 @@
-#ifndef INCLUDE_NEW_PERMISSION_OBJECT_HPP_
-#define INCLUDE_NEW_PERMISSION_OBJECT_HPP_
+#ifndef INCLUDE_SLIM_PERMISSION_OBJECT_HPP_
+#define INCLUDE_SLIM_PERMISSION_OBJECT_HPP_
 
 #include <chainbase/chainbase.hpp>
 #include <boost/multi_index_container.hpp>
@@ -19,10 +19,10 @@ using namespace std;
 using namespace boost::multi_index;
 
 namespace bfs = boost::filesystem;
-struct new_permission_object : public chainbase::object<new_permission_object_type, int64_t>
+struct slim_permission_object : public chainbase::object<slim_permission_object_type, int64_t>
 {
    template <typename Constructor, typename Allocator>
-   new_permission_object(Constructor &&c, Allocator &&a)
+   slim_permission_object(Constructor &&c, Allocator &&a)
    {
       c(*this);
    }
@@ -51,33 +51,32 @@ struct by_parent;
 struct by_owner;
 struct by_name;
 struct by_id;
-using new_permission_index = chainbase::shared_multi_index_container<
-    new_permission_object,
+using slim_permission_index = chainbase::shared_multi_index_container<
+    slim_permission_object,
     indexed_by<
-        ordered_unique<tag<by_id>, member<new_permission_object, new_permission_object::id_type, &new_permission_object::id>>,
+        ordered_unique<tag<by_id>, member<slim_permission_object, slim_permission_object::id_type, &slim_permission_object::id>>,
         ordered_unique<tag<by_parent>,
-                       composite_key<new_permission_object,
-                                     member<new_permission_object, new_permission_object::id_type, &new_permission_object::parent>,
-                                     member<new_permission_object, new_permission_object::id_type, &new_permission_object::id>>>,
+                       composite_key<slim_permission_object,
+                                     member<slim_permission_object, slim_permission_object::id_type, &slim_permission_object::parent>,
+                                     member<slim_permission_object, slim_permission_object::id_type, &slim_permission_object::id>>>,
         ordered_unique<tag<by_owner>,
-                       composite_key<new_permission_object,
-                                     member<new_permission_object, name, &new_permission_object::owner>,
-                                     member<new_permission_object, name, &new_permission_object::permission_name>>>,
+                       composite_key<slim_permission_object,
+                                     member<slim_permission_object, name, &slim_permission_object::owner>,
+                                     member<slim_permission_object, name, &slim_permission_object::permission_name>>>,
         ordered_unique<tag<by_name>,
-                       composite_key<new_permission_object,
-                                     member<new_permission_object, name, &new_permission_object::permission_name>,
-                                     member<new_permission_object, new_permission_object::id_type, &new_permission_object::id>>>>>;
+                       composite_key<slim_permission_object,
+                                     member<slim_permission_object, name, &slim_permission_object::permission_name>,
+                                     member<slim_permission_object, slim_permission_object::id_type, &slim_permission_object::id>>>>>;
 
-const new_permission_object &new_create_permission(chainbase::database &db, name account,
+const slim_permission_object &create_slim_permission(chainbase::database &db, name account,
                                            name permission_name,
-                                           new_permission_object::id_type parent
+                                           slim_permission_object::id_type parent
 )
 {
-   const auto& permission_idx = db.get_index<new_permission_index>().indices();
-   const auto &perm = db.create<new_permission_object>([&](auto &p)
+   const auto& permission_idx = db.get_index<slim_permission_index>().indices();
+   const auto &perm = db.create<slim_permission_object>([&](auto &p)
                                                     {
          p.id = permission_idx.size();
-         p.usage_id     = perm_usage.id;
          p.parent       = parent;
          p.owner        = account;
          p.permission_name         = permission_name;
@@ -87,6 +86,6 @@ const new_permission_object &new_create_permission(chainbase::database &db, name
    return perm;
 }
 
-CHAINBASE_SET_INDEX_TYPE(new_permission_object, new_permission_index)
+CHAINBASE_SET_INDEX_TYPE(slim_permission_object, slim_permission_index)
 
-#endif // INCLUDE_NEW_PERMISSION_OBJECT_HPP_"
+#endif // INCLUDE_SLIM_PERMISSION_OBJECT_HPP_"

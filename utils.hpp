@@ -52,4 +52,5 @@ void printDatabase(const chainbase::database &db, boost::filesystem::path path){
    std::cerr << "***********Used memory    :   " << calculateSize(existing_file_size - free_memory) << " \n";
 }
 
+
 #endif  // INCLUDE_UTILS_HPP_"

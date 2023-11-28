@@ -167,7 +167,12 @@ using table_name = name;
       permission_usage_object_type,
       permission_object_type,
       new_permission_usage_object_type,
-      new_permission_object_type
+      new_permission_object_type,
+      resource_limits_object_type,
+      resource_usage_object_type,
+      slim_account_object_type,
+      slim_resource_type,
+      slim_permission_object_type
       
    };
 
